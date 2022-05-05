@@ -1,0 +1,315 @@
+rm(Emtrenamiento)
+
+#########
+#PREGUNTA 1
+
+#Hacemos una copia
+datos <- datos_teleco_1_
+
+#Hacemos una inspeccion
+str(datos)
+print(datos)
+dim(datos)
+
+#contamos con 7032 filas y 23 columnas.
+#Verificamos si hay celdas vacias.
+
+sum(is.na(datos))
+sapply(datos, function(x) sum(is.na(x)))
+
+#No existen datos vacios en ninguna variable.
+
+#Calculamos la proporcion del 80% de los Datos para el entrenamiento y el 20% para el test.
+
+#ENTRENAMIENTO
+7032*0.8             # 5626 DATOS
+
+#TEST
+7032*0.2             # 1406 DATOS
+
+#Dividimos de forma alertoria los datos a utilizar para el entrenamiento como para el test.
+
+# Creamos este script con 1406 datos
+objeto1 <- sample.int(nrow(datos), nrow(datos)/5)
+head(objeto1)
+
+#Creamos la tabla para el TEST con 20% de los datos de forma alertoria
+test <- datos[objeto1, ]
+dim(test)
+
+#Generamos la tabla de Entrenamiento con el 80% de los datos, de forma alertoria, y exclueyendo los vectores
+#incluidos en la tabla de test.
+entrenamiento <- datos[-objeto1, ]
+dim (Entrenamiento)
+
+#Para comprobar lo anteriomente mencionado calcularemos las medias de la tabla de entrenamiento y la de test.
+
+summary(test$Gasto_mensual)
+summary(entrenamiento$Gasto_mensual)
+
+#Adicional comparamos el porcentaje de personas que si Abandonaron y las que no lo hicieron
+prop.table(table(datos$Abandono))
+
+
+#     No            Yes 
+#  0.734215      0.265785
+
+
+prop.table(table(entrenamiento$Abandono))
+#     No            Yes 
+#  0.7344472    0.2655528
+
+
+prop.table(table(test$Abandono))
+#     No            Yes 
+# 0.7332859     0.2667141 
+
+#PODEMOS VER QUE TANTO LA BASE COMPLETA COMO LA DE ENTRENAMIENTO Y TEST ESTAN IGUALMENTE DISTRIBUIDAS EN
+#TERMINOS DE PROPORCION RESPECTO A LAS PERSONAS QUE NOS ABANDONARON Y LAS QUE NO. EXISTE UNA LEVE 
+#VARIACION MUY INSIGNIFACTIVA.
+# POR TAL MOTIVO LAS TABLAS TANTO DE ENTRENAMIENTO Y DE TEST SON VALIDADAS .
+
+
+#########
+
+#PREGUNTA DOS:
+
+#Procedemos a codificar la Variable Abandono de la tabla Entrenamiento
+entrenamiento$Abandono <- ifelse(entrenamiento$Abandono=="Yes",1,0)
+
+#Creamos un modelo que me permita clasificar si me abandona YES (1) o NO (0), primero en funcion del contrato.
+
+Modelo_log <- glm(entrenamiento$Abandono~entrenamiento$Contrato, family = "binomial")
+summary(Modelo_log)
+
+#  Coefficients:
+#     Estimate Std.                                Error z value Pr(>|z|)    
+#   (Intercept)                    -0.30915    0.03618  -8.546   <2e-16 ***
+#   entrenamiento$ContratoOne year -1.74095    0.09865 -17.648   <2e-16 ***
+#   entrenamiento$ContratoTwo year -3.29480    0.17509 -18.817   <2e-16 ***
+
+#Me sirve pues los valores de  Pr(>|z|)  son muy cercanos a cero.
+
+#Realizo mi la prediccion con mi modelo
+
+Predic_Model_log <- predict(Modelo_log, type = "response")
+
+#Codifico los valores en 1 o 0, utilizando un parametro de 0,4 porque al poner el valor de 0,5 todos los datos
+#tomaban el valor de 0.
+Predic_Model_log_cod <- ifelse(Predic_Model_log >0.4,1,0)
+View(Predic_Model_log_cod)
+table(Predic_Model_log_cod)
+
+####
+table(entrenamiento$Abandono)
+
+#Comparo mi prediccion coon los datos reales.
+#Primero en terminos reales
+table(Predic_Model_log_cod,entrenamiento$Abandono)
+#Luego en terminos porcentuales
+prop.table(table(Predic_Model_log_cod,entrenamiento$Abandono))
+table(entrenamiento$Abandono)
+
+#CONCLUSION:
+# El modelo de predicion de abandono en base a la varible contrato es malo pues en en los 4132 personas que 
+# no nos abandonaron el modelo predijo con acierto solo un poco mas del 50% que en realida no abandonaron.
+# En cambio, en la parte de las personas que nos abandonaron si lo predijo en mayor proporcion, pero igual 
+# sigue siendo un modelo muy malo. 
+
+#######
+
+# A CONTINUACION INCORPORAREMOS MAS VARIABLES PARA INTENTAR MEJORAR EL MOLEDO.
+
+#MODELO CON TODAS LAS VARIABLES REQUERIDAS
+Modelo_log_MULT <- glm(entrenamiento$Abandono~entrenamiento$Contrato+entrenamiento$Factura_digital+entrenamiento$Servicio_Internet+entrenamiento$Soporte_tecnico+entrenamiento$CopiaSeguridad_Online+entrenamiento$Television_carta+entrenamiento$Meses_alta, family = "binomial")
+summary(Modelo_log_MULT)
+
+# Coefficients: (3 not defined because of singularities)
+# Estimate Std.                                                         Error z value Pr(>|z|)    
+#(Intercept)                                            -0.502185   0.089495  -5.611 2.01e-08 ***
+#  entrenamiento$ContratoOne year                         -0.781558   0.116057  -6.734 1.65e-11 ***
+#  entrenamiento$ContratoTwo year                         -1.599690   0.199456  -8.020 1.06e-15 ***
+#  entrenamiento$Factura_digitalYes                        0.422733   0.081743   5.172 2.32e-07 ***
+#  entrenamiento$Servicio_InternetFiber optic              0.966624   0.083529  11.572  < 2e-16 ***
+#  entrenamiento$Servicio_InternetNo                      -1.054243   0.139480  -7.558 4.08e-14 ***
+#  entrenamiento$Soporte_tecnicoNo internet service              NA         NA      NA       NA    
+#  entrenamiento$Soporte_tecnicoYes                       -0.455628   0.092297  -4.937 7.95e-07 ***
+#  entrenamiento$CopiaSeguridad_OnlineNo internet service        NA         NA      NA       NA    
+#  entrenamiento$CopiaSeguridad_OnlineYes                 -0.178337   0.083900  -2.126   0.0335 *  
+#  entrenamiento$Television_cartaNo internet service             NA         NA      NA       NA    
+#  entrenamiento$Television_cartaYes                       0.405011   0.082056   4.936 7.98e-07 ***
+#  entrenamiento$Meses_alta                               -0.030605   0.002336 -13.103  < 2e-16 ***
+
+# Me sirve pues los valores de  Pr(>|z|)  son muy cercanos a cero.
+
+#Realizo mi la prediccion con mi modelo
+
+Predic_Model_log_MULT <- predict(Modelo_log_MULT, type = "response")
+
+#Codifico los valores en 1 o 0, utilizando un parametro de 0,4 porque al poner el valor de 0,5 todos los datos
+#tomaban el valor de 0.
+Predic_Model_log_MULT_cod <- ifelse(Predic_Model_log_MULT >0.5,1,0)
+View(Predic_Model_log_cod)
+table(Predic_Model_log_cod)
+
+2496+3130
+
+####
+table(entrenamiento$Abandono)
+
+#Comparo mi prediccion coon los datos reales.
+#Primero en terminos reales
+table(Predic_Model_log_MULT_cod,entrenamiento$Abandono)
+#Luego en terminos porcentuales
+prop.table(table(Predic_Model_log_cod,entrenamiento$Abandono))
+table(entrenamiento$Abandono)
+
+#CALCULAMOS LAS MATRICES DE CONFUSION:
+install.packages("caret")
+library(caret)
+
+confusionMatrix(entrenamiento$Abandono, Predic_Model_log_MULT_cod)
+confusionMatrix(as.factor(entrenamiento$Abandono), as.factor(Predic_Model_log_MULT_cod))
+
+#CONCLUSION:
+# El modelo de predicion de abandono en base a las varible requeridas, el modelo no es bueno ya que
+# en en los 4132 personas que no nos abandonaron (0)el modelo predijo con acierto solo en 3708 veces (89.74%) 
+# y se equivoco en 424 veces(10.26%), que terminosgenerales tiene un indice de error un poco alto. 
+# sin embargo en la parte de las personas que nos abandonaron (1) acerto en 731 veces (48.92%) y se equivoco
+# en 763 veces (51.08%).
+# POR TANTO SE PUEDE CONCLUIR QUE UTLIZAR UN MODELO LOGIT PARA PREDECIR EL ABANDONO EN BASE A LAS VARIABLES 
+# PREESTABLECIDAS, NO ES POSIBLE. EN TAL MOTIVO SERIA NECESARIO ESCOGEER OTRAS VARIBALES QUE PUEDAN COLABORAR
+# DE MEJOR MANERA INFORMACION PARA MEJORAR LA PRECISION DEL MODELO.
+
+# Por tanto Correr el modelo con la tabla de test no tiene mucho sentido, ya que nos sirve validar un modelo 
+# que predice de forma incosistente, pero por fines de comparacion correre el modelo en la tabla de test.
+
+
+# A CONTINUACION INCORPORAREMOS MAS VARIABLES PARA INTENTAR MEJORAR EL MOLED en la base de test
+test$Abandono <- ifelse(test$Abandono=="Yes",1,0)
+
+#MODELO CON TODAS LAS VARIABLES REQUERIDAS
+Modelo_log_MULT_test <- glm(test$Abandono~test$Contrato+test$Factura_digital+test$Servicio_Internet+test$Soporte_tecnico+test$CopiaSeguridad_Online+test$Television_carta+test$Meses_alta, family = "binomial")
+summary(Modelo_log_MULT_test )
+
+
+# Me sirve pues los valores de  Pr(>|z|)  son muy cercanos a cero.
+
+#Realizo mi la prediccion con mi modelo
+
+Predic_Model_log_MULT_test <- predict(Modelo_log_MULT_test, type = "response")
+
+#Codifico los valores en 1 o 0, utilizando un parametro de 0,4 porque al poner el valor de 0,5 todos los datos
+#tomaban el valor de 0.
+Predic_Model_log_MULT_test_cod <- ifelse(Predic_Model_log_MULT_test >0.5,1,0)
+View(Predic_Model_log_cod)
+table(Predic_Model_log_cod)
+
+2496+3130
+
+####
+table(test$Abandono)
+
+#Comparo mi prediccion coon los datos reales.
+#Primero en terminos reales
+table(Predic_Model_log_MULT_test_cod ,test$Abandono)
+#Luego en terminos porcentuales
+prop.table(table(Predic_Model_log_MULT_test_co,test$Abandono))
+table(test$Abandono)
+
+#CALCULAMOS LAS MATRICES DE CONFUSION:
+install.packages("caret")
+library(caret)
+
+confusionMatrix(test$Abandono, Predic_Model_log_MULT_test_cod)
+confusionMatrix(as.factor(test$Abandono), as.factor(Predic_Model_log_MULT_test_cod))
+
+
+#IGUAL QUE AL UTILAR LA TABLA ENTRENAMIENTO, EN LA TABLA TEST TAMBIEN MANTIEN LOS EL MISMO NIVEL DE PREDICCION.
+
+######
+#REALIZAMOS UN ARBOL DE DECISION:
+
+install.packages("rpart")
+install.packages("rpart.plot")
+library('rpart')
+library('rpart.plot')
+
+Arbol_de_entrenamiento <- rpart(entrenamiento$Abandono~entrenamiento$Contrato+entrenamiento$Factura_digital+entrenamiento$Servicio_Internet+entrenamiento$Soporte_tecnico+entrenamiento$CopiaSeguridad_Online+entrenamiento$Television_carta+entrenamiento$Meses_alta, data = entrenamiento, method = "class")
+
+#Dibujamos el entrenamiento
+
+rpart.plot(Arbol_de_entrenamiento)  
+#
+
+#Hacemos la predicción con el Arbold entrenamiento
+
+Predicc_Arbol_Entrenamiento <- predict(Arbol_de_entrenamiento, type="class")
+View(Predicc_Arbol_Entrenamiento)  
+  
+
+#COMPARAMOS LOS RESULTARES REALES FRENTE A LA PREDICCION DEL ARBOL
+
+table(entrenamiento$Abandono,Predicc_Arbol_Entrenamiento)
+
+
+#COMPARAMOS LAS DOS MATRICES DE CONFUCIÓN TANTO LA DEL MODELO LOGIT COMO LA DEL ARBOL DE DECISIÓN.
+table(entrenamiento$Abandono)
+table(entrenamiento$Abandono,Predicc_Arbol_Entrenamiento)
+table(Predic_Model_log_MULT_cod,entrenamiento$Abandono)
+
+#COMO YA LO DIJIMOS ANTERIORMENTE EL MODELO LOGIT CON LAS VARIABLES SUGERIDAS NO TIENE UN BUEN NIVEL DE 
+# PREDICCION POR LO TANTO NO ES UN BUNE MODELO.
+
+# MIENTRAS QUE EN ARBOL DE DECISION, ES VERDAD QUE TIENE UN MAYOR NUMERO DE ACIERO CON RESPECTO A LAS 
+# QUE NO NOS ABANDONAN QUE SERIAN DE 3869 ACIERTOS, PERO A SU VEZ SE SOBRE EQUIVOCA EN LAS PERSONAS QUE 
+# NO NOS HIBAN A ABANDONAR Y EL MODELO LA PREDIJO QUE SI.
+#MIENTRAS QUE DESDE EL PUNTO DE ABANDONO ES CIERTO QUE SE EQUIVOCA MENOS, PERO A LA VEZ  ACIERTA MENOS IGUAL.
+
+# PREGUNTA 3: POR TAL MOTIVO CONCLUYO QUE AUNQUE AMBOS MODELOS CON LAS VARIABLES QUE SE ESTABLECIERON , SON 
+# MODELOS SON MALOS, EL QUE MEJOR PREDICE EN ESTE CASO ES EL MODELO LOGIT.
+
+#PREGUNTA 4: 
+#PARA CONCER LA IMPORTANCIA DE LAS VARIABLES Y CLASIFICAR SE PODRIA UTLIZAR UNA MATRIX DE CORRELACION,
+# PARA CONOCER LA CORRELACIÓN EXISTENTE ENTRE LAS DIFERENTES VARIABLES, Y ASI TENER UNA IDEA DE CUALES 
+# VARIABLES APORTARIAN MAYOR INFORMACIÓN SOBRE OTRA.
+
+#UN EJEMPLO SERIA LO SIGUEINTE
+
+#Procedemos a codificar la Variable Abandono de la tabla Entrenamiento
+
+entrenamiento_cod <- entrenamiento
+
+#Realizamos una copia de la tabla entrenamiento, para sobre ella codificar gran parte de las variables 
+# categoricas como por ejemplo SEXO, SOCIO, SERVICIO TELEF,SEGURIDADONLINE, FACTURA DIGITAL, EMPLEADO,
+# y tomar variables que nno necesitans er codificadas como JUBILADOS, MESES ALTA, GASTOS TOTALES, GASTOS MENSUALES, ABANDONO.
+
+#CODIFICAMOS
+
+entrenamiento_cod$Sexo <- ifelse(entrenamiento_cod$Sexo=="Female",1,0)
+entrenamiento_cod$Socio <- ifelse(entrenamiento_cod$Socio=="Yes",1,0)
+entrenamiento_cod$Servicio_telefonico <- ifelse(entrenamiento_cod$Servicio_telefonico=="Yes",1,0)
+entrenamiento_cod$Seguridad_Online <- ifelse(entrenamiento_cod$Seguridad_Online=="Yes",1,0)
+entrenamiento_cod$Factura_digital<- ifelse(entrenamiento_cod$Factura_digital=="Yes",1,0)
+entrenamiento_cod$Empleado<- ifelse(entrenamiento_cod$Empleado=="Yes",1,0)
+View(entrenamiento_cod)
+
+
+#cREAMOS UNA TABLA CON LAS VARIABLES QUE HEMOS DE UTILIZAR PARA HACER LA MATRI
+
+MATRI_ <- entrenamiento_cod[, c(3, 4, 5, 6, 7, 8, 11, 18, 20, 21, 22)]
+
+#CREAMOS LA MATRIZ DE CORRELACIÓN CON LA TABLA ANTES CREADA.
+Matri_Correlacion <- round(cor(MATRI_), digits=2)
+
+View(Matri_Correlacion)
+
+#CONCLUSION
+
+# COMO SE PUEDE VER EN LA MATRIX DE CORRELACIÓN LA MAYORIA DE LAS VARIABLE ESTAN POCO RELACIONADAS ENTRE SI, 
+# A EXCEPCION DE UNAS CUANTAS QUE TIENEN UN GRADO DE CORRLACIÓN MEDIA COMO POR EJEMPLO SI ES EMPLEADO Y ES 
+# SOCIO TIEN UNA CORRELACION DE 0.45, SI TIENE MESES DE ALTA Y ES SOCIO TIEN UNA CORRELACIÓN DE 0.39.
+# SOLO PPOCOS DATOS TIENE UNA CORRELACION ALTA COMO LO ES GASTOS TOTALES CN LOS MESES DE ALTA.
+
+# aSI PODEMOS UTILIZAR DE GUIA DE REFERNCIA PARA CLASIFICAR LAS VARIABLES SEGUN SU IMPORTANCIO O MEJOR DICHO
+# SEGUN EL GRADO DE CORRELACION QUE PUEDAN TENER CON LA VARIABLE ABANDONO.
