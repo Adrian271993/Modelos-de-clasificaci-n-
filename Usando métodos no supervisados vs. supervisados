@@ -1,0 +1,86 @@
+library(readr)
+library(dplyr)
+library(cluster)
+library(VIM)
+library(readxl)
+library(NbClust)
+setwd("~/IN UNIR/Analisis de datos masivos para el negocio/Actividad Grupal")
+datos<- read_excel("datos_globales(1).xlsx")
+str(datos)
+datos2<- datos %>% mutate(Happiness=as.numeric(Happiness),
+                         CO2=as.numeric(CO2),
+                         HDI=as.numeric(HDI),
+                         GNI=as.numeric(GNI))
+str(datos2)
+boxplot(datos2[,2])
+boxplot(datos2[,3])
+boxplot(datos2[,4])
+boxplot(datos2[,5])
+aggr(datos2)
+sapply(datos2, function(x) sum(is.na(x)))
+
+outliersReplace <- function(data){
+  Q  <- quantile(data)
+  minimo <- Q[1]    # valor minimo
+  Q1     <- Q[2]    # primer cuartil
+  Me     <- Q[3]    # mediana
+  Q3     <- Q[4]    # tercer cuartil
+  maximo <- Q[5]    # valor maximo
+  IQR    <- Q3 - Q1
+  
+  lowLimit  <- max(minimo, Q1 - 1.5*IQR)
+  highLimit <- min(maximo, Q3 + 1.5*IQR)
+  data[data < lowLimit] <- mean(data)
+  data[data > highLimit] <- median(data)
+  data     #devolvemos el dato       
+}
+
+datos3 <- datos2 %>%
+  mutate(HDI = outliersReplace(HDI))
+
+boxplot(datos3[,4])
+summary(datos3)
+plot(datos3)
+cor(datos3[,-1])
+NbClust(datos3[,-1], min.nc=2, max.nc=10, method="kmeans")
+cluster2<-kmeans(datos3[,-1],2)
+cluster3<-kmeans(datos3[,-1],3)
+table(cluster2$cluster)
+table(cluster3$cluster)
+
+datosc2<-cbind(datos3,cluster2$cluster)
+datosc3<-cbind(datos3,cluster3$cluster)
+
+plot(datosc2,col=datosc2$`cluster2$cluster`)
+plot(datosc3,col=datosc3$`cluster3$cluster`)
+
+##ARBOL DE DECISION
+
+##k=2
+
+library(rpart)
+library(rpart.plot)
+library(caret)
+
+
+{arboltrain02 <- rpart(cluster2$cluster ~  Happiness + CO2  + HDI + GNI
+                         , data = datos3, method="class")}
+rpart.plot(arboltrain02)
+summary(arboltrain02)
+
+arbolresultado<-predict(arboltrain02, datos3, type="class")
+arbolindicadorestest = confusionMatrix(as.factor(arbolresultado),as.factor(cluster2$cluster))
+arbolindicadorestest
+
+##k=3
+
+{arboltrain03 <- rpart(cluster3$cluster ~  Happiness + CO2  + HDI + GNI
+                       , data = datos3, method="class")}
+rpart.plot(arboltrain03)
+summary(arboltrain03)
+
+arbolresultado3<-predict(arboltrain03, datos3, type="class")
+arbolindicadorestest3 = confusionMatrix(as.factor(arbolresultado3),as.factor(cluster3$cluster))
+arbolindicadorestest3
+
+
